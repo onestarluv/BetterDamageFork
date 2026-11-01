@@ -42,8 +42,6 @@ import java.util.concurrent.atomic.AtomicBoolean
 import java.util.function.BiConsumer
 import java.util.jar.JarFile
 
-private typealias LatestNMS = kr.toxicity.damage.nms.v26_R3.NMSImpl
-
 class BetterDamagePluginImpl : JavaPlugin(), BetterDamagePlugin {
 
     private val version = MinecraftVersion(Bukkit.getBukkitVersion().substringBefore('-'))
@@ -105,28 +103,14 @@ class BetterDamagePluginImpl : JavaPlugin(), BetterDamagePlugin {
     }
 
     override fun onEnable() {
+        if (version != MinecraftVersion.V26_3) {
+            warn("Unsupported Minecraft version: $version. This build requires Minecraft 26.3.")
+            Bukkit.getPluginManager().disablePlugin(this)
+            return
+        }
         audiences()
         val manager = Bukkit.getPluginManager()
-        nms = when (version) {
-            MinecraftVersion.V26_3 -> LatestNMS()
-            MinecraftVersion.V26_2 -> kr.toxicity.damage.nms.v26_R2.NMSImpl()
-            MinecraftVersion.V26_1, MinecraftVersion.V26_1_1, MinecraftVersion.V26_1_2 -> kr.toxicity.damage.nms.v26_R1.NMSImpl()
-            MinecraftVersion.V1_21_11 -> kr.toxicity.damage.nms.v1_21_R7.NMSImpl()
-            MinecraftVersion.V1_21_9, MinecraftVersion.V1_21_10 -> kr.toxicity.damage.nms.v1_21_R6.NMSImpl()
-            MinecraftVersion.V1_21_6, MinecraftVersion.V1_21_7, MinecraftVersion.V1_21_8 -> kr.toxicity.damage.nms.v1_21_R5.NMSImpl()
-            MinecraftVersion.V1_21_5 -> kr.toxicity.damage.nms.v1_21_R4.NMSImpl()
-            MinecraftVersion.V1_21_4 -> kr.toxicity.damage.nms.v1_21_R3.NMSImpl()
-            MinecraftVersion.V1_21_2, MinecraftVersion.V1_21_3 -> kr.toxicity.damage.nms.v1_21_R2.NMSImpl()
-            MinecraftVersion.V1_21, MinecraftVersion.V1_21_1 -> kr.toxicity.damage.nms.v1_21_R1.NMSImpl()
-            MinecraftVersion.V1_20_5, MinecraftVersion.V1_20_6 -> kr.toxicity.damage.nms.v1_20_R4.NMSImpl()
-            else -> {
-                warn(
-                    "Note: this version is officially untested.",
-                    "So be careful to use!"
-                )
-                LatestNMS()
-            }
-        }
+        nms = kr.toxicity.damage.nms.v26_R3.NMSImpl()
         manager.getPlugin("ModelEngine")?.let {
             runCatching {
                 @Suppress("DEPRECATION")
@@ -186,6 +170,7 @@ class BetterDamagePluginImpl : JavaPlugin(), BetterDamagePlugin {
     }
 
     override fun onDisable() {
+        if (version != MinecraftVersion.V26_3) return
         audiences.close()
         managers.forEach(DamageManager::end)
         info("Plugin disabled.")
