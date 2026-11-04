@@ -10,9 +10,8 @@ import org.bukkit.configuration.ConfigurationSection
 class BetterDamageConfigImpl(yaml: ConfigurationSection) : BetterDamageConfig {
 
     private val debug = yaml.getBoolean("debug")
-    private val metrics = yaml.getBoolean("metrics", true)
     private val namespace = yaml.getString("namespace") ?: "betterdamage"
-    private val packPath = yaml.getFilePath("pack-path") ?: "BetterDamage/build"
+    private val packPath = yaml.getFilePath("pack-path") ?: "kokonut_damage/build"
     private val packType = yaml.getString("pack-type") ?: "zip"
     private val autoSaveTime = yaml.getLong("auto-save-time", 300) * 20
     private val skipZeroDamage = yaml.getBoolean("skip-zero-damage", true)
@@ -21,9 +20,9 @@ class BetterDamageConfigImpl(yaml: ConfigurationSection) : BetterDamageConfig {
             EffectManagerImpl.effect(it)
         }.memoizeNullable()
     }
-    private val skinSupplier = (yaml.getString("default-skin") ?: "default_skin").let {
+    private val skinSupplier = (yaml.getString("default-skin") ?: "default").let {
         {
-            DamageSkinManagerImpl.skin(it)
+            DamageSkinManagerImpl.skin(if (it == "default_skin") "default" else it)
         }.memoizeNullable()
     }
     private val mergeWithExternalResources = yaml.getBoolean("merge-with-external-resources", true)
@@ -34,7 +33,6 @@ class BetterDamageConfigImpl(yaml: ConfigurationSection) : BetterDamageConfig {
     override fun packType(): String = packType
     override fun autoSaveTime(): Long = autoSaveTime
     override fun skipZeroDamage(): Boolean = skipZeroDamage
-    override fun metrics(): Boolean = metrics
     override fun defaultEffect(): DamageEffect? = effectSupplier()
     override fun defaultSkin(): DamageSkin? = skinSupplier()
     override fun mergeWithExternalResources(): Boolean = mergeWithExternalResources

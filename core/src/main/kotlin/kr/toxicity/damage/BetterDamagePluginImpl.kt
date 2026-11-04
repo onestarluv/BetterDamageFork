@@ -9,7 +9,6 @@ import kr.toxicity.damage.api.manager.*
 import kr.toxicity.damage.api.nms.NMS
 import kr.toxicity.damage.api.pack.PackAssets
 import kr.toxicity.damage.api.scheduler.DamageScheduler
-import kr.toxicity.damage.api.util.HttpUtil
 import kr.toxicity.damage.api.util.MinecraftVersion
 import kr.toxicity.damage.compatibility.modelengine.CurrentModelEngineAdapter
 import kr.toxicity.damage.compatibility.modelengine.LegacyModelEngineAdapter
@@ -18,7 +17,6 @@ import kr.toxicity.damage.manager.*
 import kr.toxicity.damage.scheduler.BukkitScheduler
 import kr.toxicity.damage.scheduler.FoliaScheduler
 import kr.toxicity.damage.util.DATA_FOLDER
-import kr.toxicity.damage.util.audience
 import kr.toxicity.damage.util.handle
 import kr.toxicity.damage.util.ifNull
 import kr.toxicity.damage.util.info
@@ -27,13 +25,8 @@ import kr.toxicity.damage.version.ModelEngineVersion
 import kr.toxicity.model.api.nms.HitBox
 import kr.toxicity.model.api.tracker.EntityTrackerRegistry
 import net.kyori.adventure.platform.bukkit.BukkitAudiences
-import net.kyori.adventure.text.Component
-import org.bstats.bukkit.Metrics
 import org.bukkit.Bukkit
 import org.bukkit.configuration.MemoryConfiguration
-import org.bukkit.event.EventHandler
-import org.bukkit.event.Listener
-import org.bukkit.event.player.PlayerJoinEvent
 import org.bukkit.plugin.java.JavaPlugin
 import org.semver4j.Semver
 import java.io.File
@@ -50,17 +43,7 @@ class BetterDamagePluginImpl : JavaPlugin(), BetterDamagePlugin {
     var skipInitialReload = false
     private val onReload = AtomicBoolean()
 
-    private var metrics: Metrics? = null
     private var config: BetterDamageConfig = BetterDamageConfigImpl(MemoryConfiguration())
-        set(value) {
-            if (value.metrics()) {
-                if (metrics == null) metrics = Metrics(this, BetterDamage.BSTATS_ID)
-            } else metrics?.let {
-                it.shutdown()
-                metrics = null
-            }
-            field = value
-        }
 
     @Suppress("DEPRECATION")
     private val semver = Semver.coerce(description.version).ifNull { "Unable to parse BetterDamage's semver." }
@@ -73,6 +56,7 @@ class BetterDamagePluginImpl : JavaPlugin(), BetterDamagePlugin {
 
     private val managers by lazy {
         listOf(
+            DatabaseManagerImpl,
             CommandManagerImpl,
             CompatibilityManagerImpl,
             TriggerManagerImpl,
@@ -82,8 +66,7 @@ class BetterDamagePluginImpl : JavaPlugin(), BetterDamagePlugin {
             DamageSkinManagerImpl,
 
             PlayerManagerImpl,
-            PackManagerImpl,
-            DatabaseManagerImpl
+            PackManagerImpl
         )
     }
 
@@ -136,31 +119,6 @@ class BetterDamagePluginImpl : JavaPlugin(), BetterDamagePlugin {
             "Minecraft version: $version, NMS version: ${nms.version()}"
         )
         managers.forEach(DamageManager::start)
-        HttpUtil.userInfo().thenAccept {
-            info(it.toLogMessage())
-        }.exceptionally { e ->
-            e.handle("Unable to get userinfo.")
-            null
-        }
-        HttpUtil.latest().thenAccept {
-            if (semver < it) {
-                info(
-                    "Found a new version of BetterDamage: ${it.version}",
-                    "Download: ${HttpUtil.VERSION}"
-                )
-                Bukkit.getPluginManager().registerEvents(object : Listener {
-                    @EventHandler
-                    fun PlayerJoinEvent.join() {
-                        if (player.isOp) player
-                            .audience()
-                            .sendMessage(Component.text("Found a new version of BetterDamage: ").append(HttpUtil.versionComponent(it)))
-                    }
-                }, this)
-            }
-        }.exceptionally { e ->
-            e.handle("Unable to get latest version.")
-            null
-        }
         if (skipInitialReload) return
         when (val state = reload(true)) {
             is ReloadState.Failure -> state.throwable.handle("Unable to reload.")
@@ -172,7 +130,8 @@ class BetterDamagePluginImpl : JavaPlugin(), BetterDamagePlugin {
     override fun onDisable() {
         if (version != MinecraftVersion.V26_3) return
         audiences.close()
-        managers.forEach(DamageManager::end)
+        managers.filterNot { it === DatabaseManagerImpl }.forEach(DamageManager::end)
+        DatabaseManagerImpl.end()
         info("Plugin disabled.")
     }
 

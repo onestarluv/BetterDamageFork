@@ -1,7 +1,6 @@
 package kr.toxicity.damage.api.database;
 
 import kr.toxicity.damage.api.player.DamagePlayerData;
-import org.bukkit.configuration.ConfigurationSection;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.UUID;
@@ -12,11 +11,10 @@ import java.util.UUID;
 public interface DamagePlayerDatabase {
 
     /**
-     * Creates a connection by given config
-     * @param section config
+     * Kokonut-Core의 데이터베이스 서비스에 연결합니다.
      * @return connection
      */
-    @NotNull Connection connect(@NotNull ConfigurationSection section);
+    @NotNull Connection connect();
 
     /**
      * Connection

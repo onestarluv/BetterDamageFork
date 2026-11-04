@@ -3,56 +3,42 @@ package kr.toxicity.damage.player
 import kr.toxicity.damage.api.player.DamagePlayerData
 import kr.toxicity.damage.api.skin.DamageSkin
 import kr.toxicity.damage.manager.DamageSkinManagerImpl
-import org.jetbrains.annotations.Unmodifiable
-import java.util.*
+import org.bukkit.Bukkit
+import java.util.UUID
+import java.util.Collections
 
 class DamagePlayerDataImpl(
-    private var selectedSkin: DamageSkin?,
-    private var skins: MutableMap<String, DamageSkin>
+    private val uuid: UUID,
+    private var selected: DamageSkin?,
+    private val owns: (DamageSkin) -> Boolean = { skin ->
+        Bukkit.getPlayer(uuid)?.hasPermission("betterdamage.skin.${skin.name()}") == true
+    },
+    private val available: () -> Collection<DamageSkin> = {
+        DamageSkinManagerImpl.allNames().mapNotNull(DamageSkinManagerImpl::skin)
+    }
 ) : DamagePlayerData {
-    private val unmodifiableRef = Collections.unmodifiableMap(skins)
-
-    val addSet = mutableSetOf<String>()
-    val removalSet = mutableSetOf<String>()
-
-    override fun skins(): @Unmodifiable Collection<DamageSkin> = unmodifiableRef.values
+    override fun skins(): Collection<DamageSkin> = Collections.unmodifiableList(available().filter(owns))
 
     @Synchronized
     fun reload() {
-        skins = skins.keys.mapNotNull {
-            DamageSkinManagerImpl.skin(it)
-        }.associateBy {
-            it.name()
-        }.toMutableMap()
-        selectedSkin = selectedSkin?.let {
-            DamageSkinManagerImpl.skin(it.name())
-        }
-    }
-
-    @Synchronized
-    override fun add(skin: DamageSkin): Boolean {
-        return if (skins.put(skin.name(), skin) == null) {
-            if (!removalSet.remove(skin.name())) addSet += skin.name()
-            true
-        } else false
-    }
-
-    @Synchronized
-    override fun remove(skin: DamageSkin): Boolean {
-        return if (skins.remove(skin.name()) != null) {
-            if (!addSet.remove(skin.name())) removalSet += skin.name()
-            true
-        } else false
+        selected = selected?.let { DamageSkinManagerImpl.skin(it.name()) }
     }
 
     @Synchronized
     override fun select(skin: DamageSkin): Boolean {
-        return if (skins.containsKey(skin.name())) {
-            selectedSkin = skin
-            true
-        } else false
+        if (!owns(skin)) return false
+        selected = skin
+        return true
     }
 
+    // Revocation takes effect the next time an effect is used.
     @Synchronized
-    override fun selectedSkin(): DamageSkin? = selectedSkin
+    override fun selectedSkin(): DamageSkin? = selected?.takeIf(owns)
+
+    @Synchronized
+    override fun clearSelection() { selected = null }
+
+    // Saving also works after the player disconnects.
+    @Synchronized
+    fun savedSkin(): DamageSkin? = selected
 }

@@ -9,6 +9,7 @@ import kr.toxicity.damage.util.info
 import org.bukkit.Bukkit
 
 object CompatibilityManagerImpl : CompatibilityManager {
+    private val active = mutableListOf<kr.toxicity.damage.compatibility.Compatibility>()
 
     private val hookMap = mapOf(
         "MythicLib" to {
@@ -26,7 +27,7 @@ object CompatibilityManagerImpl : CompatibilityManager {
         Bukkit.getPluginManager().run {
             info(*hookMap.mapNotNull { (name, hooker) ->
                 if (isPluginEnabled(name)) {
-                    hooker().start()
+                    hooker().also { active += it }.start()
                     "Plugin hooks $name."
                 } else null
             }.toTypedArray())
@@ -34,5 +35,10 @@ object CompatibilityManagerImpl : CompatibilityManager {
     }
 
     override fun reload(assets: PackAssets) {
+    }
+
+    override fun end() {
+        active.asReversed().forEach { it.end() }
+        active.clear()
     }
 }

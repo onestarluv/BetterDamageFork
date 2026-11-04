@@ -3,26 +3,14 @@ package kr.toxicity.damage.util
 import net.kyori.adventure.audience.Audience
 import net.kyori.adventure.key.Key
 import net.kyori.adventure.text.Component
-import net.kyori.adventure.text.ComponentLike
-import net.kyori.adventure.text.TextComponent
-import net.kyori.adventure.text.event.HoverEvent
 import net.kyori.adventure.text.format.NamedTextColor
-import net.kyori.adventure.text.format.TextColor
-import net.kyori.adventure.text.format.TextDecoration
 import org.bukkit.command.CommandSender
 
 fun createAdventureKey(path: String) = Key.key(NAMESPACE, path)
 
-fun String.toTextColor() = if (startsWith('#') && length == 7) TextColor.fromHexString(this) else NamedTextColor.NAMES.value(lowercase()).ifNull {
-    "This color doesn't exist: $this"
-}
-
 fun <T : Any> (() -> T?).memoizeNullable(): () -> T? = this as? MemoizedSupplier ?: MemoizedSupplier(this)
 
-private class MemoizedSupplier<T : Any>(
-    private val delegate: () -> T?
-) : () -> T? {
-
+private class MemoizedSupplier<T : Any>(private val delegate: () -> T?) : () -> T? {
     private var cache: T? = null
 
     @Synchronized
@@ -32,45 +20,11 @@ private class MemoizedSupplier<T : Any>(
     }
 }
 
-val INFO = " [!] ".toComponent {
-    decorate(TextDecoration.BOLD).color(NamedTextColor.GREEN)
-}
-val WARN = " [!] ".toComponent {
-    decorate(TextDecoration.BOLD).color(NamedTextColor.RED)
-}
-
-fun String.toComponent(builder: TextComponent.Builder.() -> Unit = {}) = componentOf(this, builder)
-fun String.toComponent(color: TextColor) = componentOf(this) {
-    color(color)
-}
-
-fun CommandSender.audience() = PLUGIN.audiences().sender(this)
-
-fun spaceComponentOf() = Component.space()
-fun emptyComponentOf() = Component.empty()
-fun lineComponentOf() = Component.newline()
-fun componentOf(vararg like: ComponentLike) = componentOf {
-    append(*like)
-}
-fun componentWithLineOf(vararg like: ComponentLike) = componentOf {
-    like.forEachIndexed { i, l ->
-        append(l)
-        if (i < like.lastIndex) append(lineComponentOf())
+fun CommandSender.audience(): Audience = object : Audience {
+    override fun sendMessage(message: Component) {
+        CoreMessages.send(this@audience, message)
     }
 }
-fun componentOf(content: String, builder: TextComponent.Builder.() -> Unit) = componentOf {
-    content(content)
-    builder()
-}
-fun componentOf(builder: TextComponent.Builder.() -> Unit) = Component.text { it.builder() }
-fun ComponentLike.toHoverEvent() = HoverEvent.showText(this)
 
-fun Audience.info(message: String) = info(message.toComponent())
-fun Audience.warn(message: String) = warn(message.toComponent())
-fun Audience.infoNotNull(vararg messages: ComponentLike?): Unit = info(*messages.filterNotNull().ifEmpty {
-    return
-}.toTypedArray())
-fun Audience.info(vararg messages: ComponentLike) = sendMessage(componentWithLineOf(*messages.map { componentOf(INFO, it) }.toTypedArray()))
-fun Audience.warn(vararg messages: ComponentLike) = sendMessage(componentWithLineOf(*messages.map { componentOf(WARN, it) }.toTypedArray()))
-fun Audience.info(message: ComponentLike) = sendMessage(componentOf(INFO, message))
-fun Audience.warn(message: ComponentLike) = sendMessage(componentOf(WARN, message))
+fun Audience.info(message: String) = sendMessage(Component.text(message))
+fun Audience.warn(message: String) = sendMessage(Component.text(message, NamedTextColor.RED))

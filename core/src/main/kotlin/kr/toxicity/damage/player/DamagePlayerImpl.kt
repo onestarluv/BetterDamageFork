@@ -13,6 +13,7 @@ class DamagePlayerImpl(
 ) : DamagePlayer {
 
     private val data = player.uniqueId.toPlayerData()
+    private var lastSavedSkin = data.savedSkin()?.name()
 
     fun reload() {
         data.reload()
@@ -29,10 +30,15 @@ class DamagePlayerImpl(
     override fun data(): DamagePlayerData = data
 
     override fun save() {
-        runCatching {
-            data.save(player.uniqueId)
-        }.onFailure {
-            it.handle("Unable to save ${player.name} (${player.uniqueId})'s data.")
+        synchronized(data) {
+            val selected = data.savedSkin()?.name()
+            if (selected == lastSavedSkin) return
+            runCatching {
+                data.save(player.uniqueId)
+                lastSavedSkin = selected
+            }.onFailure {
+                it.handle("${player.name} (${player.uniqueId})님의 장착 정보를 저장하지 못했습니다.")
+            }
         }
     }
 

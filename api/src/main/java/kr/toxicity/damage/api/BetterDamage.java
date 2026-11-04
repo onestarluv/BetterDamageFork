@@ -12,11 +12,6 @@ import java.util.Objects;
 public final class BetterDamage {
 
     /**
-     * BStats id.
-     */
-    public static final int BSTATS_ID = 24961;
-
-    /**
      * Check a running platform is Paper.
      */
     public static final boolean IS_PAPER;

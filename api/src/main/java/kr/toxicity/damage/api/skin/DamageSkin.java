@@ -19,6 +19,14 @@ public interface DamageSkin {
     @NotNull String name();
 
     /**
+     * GUI와 명령어에 표시할 이름을 반환합니다.
+     * @return 표시 이름
+     */
+    default @NotNull String displayName() {
+        return name();
+    }
+
+    /**
      * Gets effect map
      * @return map
      */

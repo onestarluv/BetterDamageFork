@@ -35,6 +35,7 @@ class DamageSkinImpl(
     }
 
     override fun name(): String = name
+    override fun displayName(): String = SkinCatalog.displayName(name)
     override fun effectMap(): @Unmodifiable Map<DamageTriggerType, DamageEffect> = effectMap
     override fun fallback(): DamageEffect? = fallback
 

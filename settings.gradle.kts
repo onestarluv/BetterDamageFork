@@ -33,7 +33,7 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "BetterDamage"
+rootProject.name = "kokonut_damage"
 
 include(
     "api",

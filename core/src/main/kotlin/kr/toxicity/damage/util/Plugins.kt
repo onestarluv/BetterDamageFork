@@ -40,7 +40,7 @@ fun Throwable.handle(log: String) {
 fun Throwable.handle(sender: CommandSender, log: String) {
     handle(log) {
         synchronized(sender) {
-            it.forEach(sender::sendMessage)
+            sender.audience().warn(it.joinToString("\n"))
         }
     }
 }
@@ -48,11 +48,11 @@ fun Throwable.handle(sender: CommandSender, log: String) {
 fun Throwable.handle(log: String, handler: (List<String>) -> Unit) {
     val list = mutableListOf(
         log,
-        "Reason: ${message ?: javaClass.name}"
+        "원인: ${message ?: javaClass.name}"
     )
     if (PLUGIN.config().debug()) {
         list += listOf(
-            "Stack trace:",
+            "오류 상세:",
             stackTraceToString()
         )
     }

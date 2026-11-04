@@ -5,6 +5,7 @@ import kr.toxicity.damage.api.manager.ImageManager
 import kr.toxicity.damage.api.pack.PackAssets
 import kr.toxicity.damage.api.pack.PackSupplier
 import kr.toxicity.damage.util.*
+import kr.toxicity.damage.skin.SkinCatalog
 import net.kyori.adventure.key.Key
 import java.io.File
 
@@ -15,7 +16,9 @@ object ImageManagerImpl : ImageManager {
     override fun reload(assets: PackAssets) {
         imageMap.clear()
         val dir = DATA_FOLDER.subFolder("assets")
-        DATA_FOLDER.subFolder("images").forEachAllYaml { key, section ->
+        SkinCatalog.reload()
+        SkinCatalog.files.forEach { (key, file) ->
+            val section = SkinCatalog.image(file)
             runCatching {
                 val imageName = File(dir, section.getString("file").ifNull { "'file' value doesn't exist." })
                 val image = imageName.ifEmpty {

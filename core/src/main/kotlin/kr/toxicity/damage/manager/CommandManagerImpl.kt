@@ -1,158 +1,81 @@
 package kr.toxicity.damage.manager
 
-import kr.toxicity.damage.api.ReloadState
-import kr.toxicity.damage.api.data.DamageEffectData
 import kr.toxicity.damage.api.manager.CommandManager
 import kr.toxicity.damage.api.pack.PackAssets
-import kr.toxicity.damage.command.effect
-import kr.toxicity.damage.command.register
-import kr.toxicity.damage.command.skin
+import kr.toxicity.damage.gui.SkinMenu
 import kr.toxicity.damage.util.*
-import org.bukkit.OfflinePlayer
 import org.bukkit.command.CommandSender
 import org.bukkit.entity.Player
 import org.incendo.cloud.bukkit.CloudBukkitCapabilities
-import org.incendo.cloud.bukkit.parser.OfflinePlayerParser.offlinePlayerParser
-import org.incendo.cloud.context.CommandContext
 import org.incendo.cloud.execution.ExecutionCoordinator
 import org.incendo.cloud.paper.LegacyPaperCommandManager
-import org.incendo.cloud.parser.standard.DoubleParser.doubleParser
 import org.incendo.cloud.parser.standard.StringParser.stringParser
 import org.incendo.cloud.suggestion.SuggestionProvider.blockingStrings
+import org.incendo.cloud.exception.*
 
 object CommandManagerImpl : CommandManager {
-    override fun reload(assets: PackAssets) {
-    }
+    override fun reload(assets: PackAssets) {}
 
     override fun start() {
-        LegacyPaperCommandManager.createNative(
-            PLUGIN,
-            ExecutionCoordinator.simpleCoordinator()
-        ).apply {
-            if (hasCapability(CloudBukkitCapabilities.NATIVE_BRIGADIER)) {
-                registerBrigadier()
-                brigadierManager().setNativeNumberSuggestions(true)
-            } else if (hasCapability(CloudBukkitCapabilities.ASYNCHRONOUS_COMPLETION)) registerAsynchronousCompletions()
-        }.register(
-            "betterdamage",
-            "All-related command.",
-            "bd"
-        ) {
-            create(
-                "reload",
-                "Reloads BetterDamage.",
-                "re", "rl"
-            ) {
-                handler(::reload)
+        SkinMenu.register()
+        val manager = LegacyPaperCommandManager.createNative(PLUGIN, ExecutionCoordinator.simpleCoordinator()).apply {
+            exceptionController().apply {
+                registerHandler(NoPermissionException::class.java) { ctx ->
+                    ctx.context().sender().audience().warn("명령어를 사용할 권한이 없습니다.")
+                }
+                registerHandler(NoSuchCommandException::class.java) { ctx ->
+                    ctx.context().sender().audience().warn("존재하지 않는 명령어입니다. /데미지스킨을 사용해주세요.")
+                }
+                registerHandler(InvalidCommandSenderException::class.java) { ctx ->
+                    ctx.context().sender().audience().warn("게임 내 플레이어만 사용할 수 있습니다.")
+                }
+                registerHandler(InvalidSyntaxException::class.java) { ctx ->
+                    ctx.context().sender().audience().warn("사용법: /${ctx.exception().correctSyntax()}")
+                }
+                registerHandler(ArgumentParseException::class.java) { ctx ->
+                    ctx.context().sender().audience().warn("입력값을 확인해주세요.")
+                }
+                registerHandler(CommandExecutionException::class.java) { ctx ->
+                    ctx.exception().handle("명령어 처리 중 오류가 발생했습니다.")
+                    ctx.context().sender().audience().warn("명령어 처리 중 오류가 발생했습니다.")
+                }
+                registerHandler(Throwable::class.java) { ctx ->
+                    ctx.exception().handle("명령어 처리 중 오류가 발생했습니다.")
+                    ctx.context().sender().audience().warn("명령어 처리 중 오류가 발생했습니다.")
+                }
             }
-            create(
-                "test",
-                "Tests effects.",
-                "t"
-            ) {
-                senderType(Player::class.java)
-                    .required("effect", stringParser(), blockingStrings { _, _ -> EffectManagerImpl.effectNames() })
-                    .required("damage", doubleParser())
-                    .handler(::test)
-            }
-            create(
-                "select",
-                "Selects player's damage skin.",
-                "s"
-            ) {
-                required("player", offlinePlayerParser())
-                    .required("skin", stringParser(), blockingStrings { _, _ -> DamageSkinManagerImpl.allNames() })
-                    .handler(::select)
-            }
-            create(
-                "add",
-                "Adds player's damage skin.",
-                "a"
-            ) {
-                required("player", offlinePlayerParser())
-                    .required("skin", stringParser(), blockingStrings { _, _ -> DamageSkinManagerImpl.allNames() })
-                    .handler(::add)
-            }
-            create(
-                "remove",
-                "Removes player's damage skin.",
-                "r"
-            ) {
-                required("player", offlinePlayerParser())
-                    .required("skin", stringParser(), blockingStrings { _, _ -> DamageSkinManagerImpl.allNames() })
-                    .handler(::remove)
-            }
-            create(
-                "info",
-                "Infos some player's data.",
-                "i"
-            ) {
-                required("player", offlinePlayerParser())
-                    .handler(::info)
-            }
+            if (hasCapability(CloudBukkitCapabilities.NATIVE_BRIGADIER)) registerBrigadier()
+            else if (hasCapability(CloudBukkitCapabilities.ASYNCHRONOUS_COMPLETION)) registerAsynchronousCompletions()
         }
+        val root = manager.commandBuilder("데미지스킨", "bd", "betterdamage")
+        manager.command(root.permission("betterdamage.gui").senderType(Player::class.java).handler { ctx ->
+            ctx.sender().onPlayerThread { SkinMenu.open(ctx.sender()) }
+        })
+        manager.command(root.literal("장착").permission("betterdamage.select")
+            .required("플레이어", stringParser(), SkinPlayers.suggestions())
+            .required("스킨", stringParser(), blockingStrings { _, _ -> DamageSkinManagerImpl.displayNames() })
+            .handler { ctx ->
+                val name = ctx.get<String>("스킨")
+                withTarget(ctx.sender(), ctx.get("플레이어")) { player ->
+                    val skin = DamageSkinManagerImpl.skin(name)
+                    val data = PlayerManagerImpl.player(player.uniqueId)?.data()
+                    when {
+                        skin == null -> ctx.sender().audience().warn("존재하지 않는 스킨입니다: $name")
+                        data == null -> ctx.sender().audience().warn("플레이어 데이터를 불러오는 중입니다.")
+                        data.select(skin) -> ctx.sender().audience().info("${player.name}님에게 ${skin.displayName()} 데미지 스킨을 장착했습니다.")
+                        else -> ctx.sender().audience().warn("대상에게 해당 스킨 권한이 없습니다.")
+                    }
+                }
+            })
     }
 
-    private fun reload(ctx: CommandContext<CommandSender>) {
-        val sender = ctx.sender()
+    private fun withTarget(sender: CommandSender, identifier: String, action: (Player) -> Unit) {
         async {
-            when (val state = PLUGIN.reload()) {
-                is ReloadState.Failure -> state.throwable.handle(sender, "Unable to reload.")
-                is ReloadState.OnReload -> sender.audience().warn("This plugin is still on reload!")
-                is ReloadState.Success -> sender.audience().info("Reload success: (${state.time.withComma()} ms)")
-            }
-        }
-    }
-
-    private fun test(ctx: CommandContext<Player>) {
-        val player = ctx.sender()
-        val effect = ctx.effect("effect") { return player.audience().warn("This effect doesn't exist: $it") }
-        val d = ctx.get<Double>("damage")
-        effect.play(DamageEffectData(player, player, d))
-        player.audience().info("Successfully played.")
-    }
-
-    private fun select(ctx: CommandContext<CommandSender>) {
-        val offline = ctx.get<OfflinePlayer>("player")
-        val sender = ctx.sender().audience()
-        val skin = ctx.skin("skin") { return sender.warn("This skin doesn't exist: $it") }
-        offline.setPlayerData {
-            if (select(skin)) sender.info("Successfully selected: ${skin.name()}")
-            else sender.warn("This player doesn't have this skin: ${skin.name()}")
-        }
-    }
-
-    private fun add(ctx: CommandContext<CommandSender>) {
-        val offline = ctx.get<OfflinePlayer>("player")
-        val sender = ctx.sender().audience()
-        val skin = ctx.skin("skin") { return sender.warn("This skin doesn't exist: $it") }
-        offline.setPlayerData {
-            if (add(skin)) sender.info("Successfully added: ${skin.name()}")
-            else sender.warn("This player already have this skin: ${skin.name()}")
-        }
-    }
-
-    private fun remove(ctx: CommandContext<CommandSender>) {
-        val offline = ctx.get<OfflinePlayer>("player")
-        val sender = ctx.sender().audience()
-        val skin = ctx.skin("skin") { return sender.warn("This skin doesn't exist: $it") }
-        offline.setPlayerData {
-            if (remove(skin)) sender.info("Successfully removed: ${skin.name()}")
-            else sender.warn("This player doesn't have this skin: ${skin.name()}")
-        }
-    }
-
-    private fun info(ctx: CommandContext<CommandSender>) {
-        val offline = ctx.get<OfflinePlayer>("player")
-        val sender = ctx.sender().audience()
-        offline.getPlayerData {
-            sender.info("--------------------")
-            sender.info("Selected skin: ${selectedSkin()?.name()}")
-            sender.info("Skins:")
-            skins().forEach {
-                sender.info(" - ${it.name()}")
-            }
-            sender.info("--------------------")
+            runCatching {
+                val target = SkinPlayers.find(identifier)
+                if (target == null) sender.audience().warn("접속 중인 플레이어를 찾을 수 없습니다: $identifier")
+                else target.onPlayerThread { if (target.isOnline) action(target) }
+            }.onFailure { it.handle(sender, "플레이어 별명 조회에 실패했습니다.") }
         }
     }
 }

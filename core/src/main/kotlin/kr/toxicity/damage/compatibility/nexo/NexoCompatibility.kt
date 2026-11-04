@@ -9,7 +9,12 @@ import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
 
 class NexoCompatibility : Compatibility {
+    private var coupons: NexoSkinCoupons? = null
+
     override fun start() {
+        if (Bukkit.getPluginManager().isPluginEnabled("LuckPerms")) {
+            coupons = NexoSkinCoupons().also { Bukkit.getPluginManager().registerEvents(it, PLUGIN) }
+        }
         if (CONFIG.mergeWithExternalResources()) PLUGIN.skipInitialReload = true
         Bukkit.getPluginManager().registerEvents(object : Listener {
             @EventHandler
@@ -30,4 +35,6 @@ class NexoCompatibility : Compatibility {
             }
         }, PLUGIN)
     }
+
+    override fun end() { coupons?.close() }
 }

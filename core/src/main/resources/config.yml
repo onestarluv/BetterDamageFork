@@ -1,10 +1,9 @@
 debug: false #debug
-metrics: true #https://bstats.org/plugin/bukkit/BetterDamage/24961
 namespace: "betterdamage" #Resource pack namespace
-pack-path: "BetterDamage/build"
+pack-path: "kokonut_damage/build"
 pack-type: zip #folder, zip
 auto-save-time: 300
 skip-zero-damage: true
 default-effect: "null" #Default effect
-default-skin: "default_skin"
+default-skin: "default"
 merge-with-external-resources: true

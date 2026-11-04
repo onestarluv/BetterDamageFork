@@ -9,8 +9,7 @@ import java.io.File
 enum class PluginConfig(
     val fileName: String
 ) {
-    CONFIG("config.yml"),
-    DATABASE("database.yml")
+    CONFIG("config.yml")
     ;
     fun load(): ConfigurationSection {
         val resource = PLUGIN.getResource(fileName)?.bufferedReader()?.use {

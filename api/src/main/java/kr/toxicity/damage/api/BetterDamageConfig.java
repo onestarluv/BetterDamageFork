@@ -16,12 +16,6 @@ public interface BetterDamageConfig {
     boolean debug();
 
     /**
-     * Checks metrics is enabled.
-     * @return metrics
-     */
-    boolean metrics();
-
-    /**
      * Gets pack namespace (assets/namespace)
      * Default: betterdamage
      * @return namespace

@@ -16,11 +16,6 @@ val dependenciesContent = libs.bundles.library.standard.map {
 }.get()
 
 dependencies {
-    implementation(libs.bundles.library.shaded) {
-        exclude(group = "org.jetbrains", module = "annotations")
-        exclude(group = "io.leangen.geantyref", module = "geantyref")
-    }
-
     implementation(project(":api")) { isTransitive = false }
     implementation(project(":core")) { isTransitive = false }
 
@@ -47,7 +42,7 @@ tasks {
             attributes(
                 "paperweight-mappings-namespace" to "spigot",
                 "Version" to pluginVersion,
-                "Author" to "toxicity188",
+                "Author" to "pingpong",
                 "Url" to "https://github.com/toxicity188/BetterDamage",
                 "Created-By" to "Gradle $gradle",
                 "Build-Jdk" to "${System.getProperty("java.vendor")} ${System.getProperty("java.version")}",
@@ -62,20 +57,21 @@ tasks {
             relocate(pattern, "$groupString.shaded.$pattern")
         }
         prefix("kotlin")
-        prefix("org.bstats")
     }
 }
 
 bukkitPluginYaml {
     main = "${project.group}.BetterDamagePluginImpl"
     version = project.version.toString()
-    website = "https://github.com/toxicity188/BetterDamage"
+    website = "https://wiki.egoverse.kr"
     name = rootProject.name
     foliaSupported = true
     apiVersion = "26.3"
-    author = "toxicity"
-    description = "Provides simple damage skin for Minecraft Bukkit."
+    author = "pingpong"
+    description = "에고버스 플러그인"
+    depend = listOf("Kokonut-Core")
     softDepend = listOf(
+        "LuckPerms",
         "BetterModel",
         "MMOCore",
         "MMOItems",
@@ -88,3 +84,12 @@ bukkitPluginYaml {
         "net.kyori:adventure-text-serializer-gson:$adventure"
     ) + dependenciesContent
 }
+
+// Collect the deployable artifact without copying plain/intermediate jars.
+val collectPluginArtifact = tasks.register<Copy>("collectPluginArtifact") {
+    val artifact = tasks.named<org.gradle.api.tasks.bundling.AbstractArchiveTask>("shadowJar")
+    dependsOn(artifact)
+    from(artifact.flatMap { it.archiveFile })
+    into(layout.projectDirectory.dir("../core/plugin"))
+}
+tasks.named("shadowJar") { finalizedBy(collectPluginArtifact) }

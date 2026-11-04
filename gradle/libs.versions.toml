@@ -5,13 +5,11 @@ adventure = "5.2.0"
 paperweight = "2.0.0-beta.23"
 
 [libraries]
-hikaricp = "com.zaxxer:HikariCP:7.1.0"
 semver4j = "org.semver4j:semver4j:6.0.0"
 adventure-platform-bukkit = "io.github.toxicity188:adventure-platform-bukkit:5.2.0"
 expiringmap = "net.jodah:expiringmap:0.5.11"
 exp4j = "net.objecthunter:exp4j:0.4.8"
 
-bstats = "org.bstats:bstats-bukkit:3.2.1"
 
 cloud-paper = "org.incendo:cloud-paper:2.0.1"
 
@@ -20,15 +18,11 @@ build-paperweight = { module = "io.papermc.paperweight.userdev:io.papermc.paperw
 
 [bundles]
 library-standard = [
-    "hikaricp",
     "semver4j",
     "adventure-platform-bukkit",
     "expiringmap",
     "exp4j",
     "cloud-paper"
-]
-library-shaded = [
-    "bstats"
 ]
 
 [plugins]
